@@ -1,0 +1,11 @@
+# Project 04 — local app container dependencies
+# These are ONLY for the Streamlit dashboard + DB loader — NOT for inference
+# Inference deps live on the RunPod pod (see remote/setup_pod.sh)
+
+streamlit>=1.35.0
+psycopg2-binary>=2.9.9
+pandas>=2.2.0
+numpy>=2.0.0
+plotly>=5.22.0
+sqlalchemy>=2.0.0
+python-dotenv>=1.0.0

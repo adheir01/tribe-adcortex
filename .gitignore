@@ -1,0 +1,31 @@
+# Secrets — never commit
+.env
+*.env
+
+# Large model/data files
+*.npy
+cache/
+creatives/*.mp4
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+
+# dbt
+dbt/target/
+dbt/logs/
+dbt/.user.yml
+
+# Docker
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Keep folder stubs in git
+!results/.gitkeep
+!creatives/.gitkeep

@@ -1,0 +1,3 @@
+# This file keeps the results/ folder tracked by git.
+# Actual JSON output files from RunPod are NOT committed (see .gitignore).
+# After running inference on RunPod, scp roi_scores.json into this folder.

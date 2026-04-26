@@ -1,0 +1,52 @@
+version: "3.9"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Project 04 — TRIBE v2 Ad Creative Neural Engagement Scorer
+# Port convention (consistent across all 4 projects):
+#   PostgreSQL: 5435   Streamlit: 8504
+# All ports bound to 127.0.0.1 — never exposed to public internet
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── PostgreSQL database ──────────────────────────────────────────────────
+  db:
+    image: postgres:16
+    container_name: tribe_db
+    environment:
+      POSTGRES_DB:       tribe_scorer
+      POSTGRES_USER:     tribe
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "127.0.0.1:5435:5432"   # host:container — 5435 is P04 convention
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tribe -d tribe_scorer"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── Streamlit dashboard ──────────────────────────────────────────────────
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: tribe_app
+    ports:
+      - "127.0.0.1:8504:8501"   # Streamlit always runs on 8501 inside container
+    environment:
+      PYTHONPATH:   /app
+      DATABASE_URL: postgresql://tribe:${POSTGRES_PASSWORD}@db:5432/tribe_scorer
+    volumes:
+      - ./results:/app/results   # mount results folder — drop new JSONs without rebuild
+      - ./app:/app               # live code reload during development
+    depends_on:
+      db:
+        condition: service_healthy
+    command: streamlit run main.py --server.port 8501 --server.address 0.0.0.0
+
+volumes:
+  pgdata:
+    name: tribe_pgdata

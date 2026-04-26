@@ -1,0 +1,3 @@
+# MP4 ad creative files go here — NOT committed to git (too large).
+# Naming convention: ad_a.mp4, ad_b.mp4, ad_c.mp4, ad_d.mp4
+# Upload to RunPod via: scp -P <port> creatives/*.mp4 root@<pod-ip>:~/tribe_scorer/creatives/

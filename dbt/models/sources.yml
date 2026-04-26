@@ -1,0 +1,89 @@
+version: 2
+
+# =============================================================================
+# sources.yml — tells dbt where the raw data lives
+# =============================================================================
+# Sources are the tables that dbt does NOT create — they're created by
+# external processes (in our case, db.py and scripts/init.sql).
+# Declaring them here lets dbt:
+#   1. Generate lineage documentation (sources → staging → mart)
+#   2. Run freshness checks (how old is the raw data?)
+#   3. Use {{ source() }} refs in SQL for traceability
+
+sources:
+  - name: tribe_raw
+    description: "Raw tables populated by db.py JSON ingestion"
+    schema: public
+    tables:
+      - name: raw_roi_scores
+        description: "One row per (run_id, ad_name, roi_group) — direct output from TRIBE v2 inference"
+        columns:
+          - name: id
+            description: "Auto-increment primary key"
+          - name: run_id
+            description: "Timestamp-based batch identifier, e.g. 2026-04-25T14:30"
+          - name: ad_name
+            description: "Ad creative file stem, e.g. ad_a, ad_b"
+          - name: roi_group
+            description: "Brain ROI group key: visual, motion, auditory, language, memory, attention, emotion, decision"
+          - name: score
+            description: "Mean predicted fMRI activation across ROI vertices and time steps"
+
+      - name: top_regions
+        description: "Top-10 HCP MMP brain regions per ad per run"
+        columns:
+          - name: run_id
+            description: "Foreign key to scoring_runs"
+          - name: ad_name
+            description: "Ad creative file stem"
+          - name: rank
+            description: "Activation rank (1 = most activated region)"
+          - name: region_name
+            description: "HCP MMP parcellation label, e.g. V1, A1, MT"
+
+      - name: scoring_runs
+        description: "Audit log — one row per inference run"
+        columns:
+          - name: run_id
+            description: "Unique timestamp-based run identifier"
+          - name: n_ads_scored
+            description: "Number of ad variants processed in this run"
+
+# =============================================================================
+# Model documentation
+# =============================================================================
+
+models:
+  - name: stg_roi_scores
+    description: >
+      Staging model over raw_roi_scores. Cleans column names, casts types,
+      and filters out NULL scores. Materialised as a view.
+    columns:
+      - name: score_id
+        description: "Source primary key"
+      - name: roi_activation
+        description: "Cleaned mean predicted fMRI activation — same value as raw score"
+      - name: ad_name_clean
+        description: "Lowercased, trimmed version of ad_name for consistent joining"
+
+  - name: mart_ad_comparison
+    description: >
+      Analysis-ready mart table. One row per (run_id, ad_name, roi_group).
+      Adds z-scores, percentage lift vs. run average, within-run ranks,
+      composite weighted scores, and winner flags.
+      Materialised as a table for dashboard query performance.
+    columns:
+      - name: roi_zscore
+        description: "Standard deviations above/below the run mean for this ROI group"
+      - name: roi_pct_lift
+        description: "Percentage activation lift vs. run average. 0.15 = 15% stronger."
+      - name: roi_rank
+        description: "Rank within run for this ROI group. 1 = strongest activation."
+      - name: composite_score
+        description: "Weighted composite across all ROI groups (see weights in SQL)"
+      - name: composite_score_normalised
+        description: "Min-max normalised composite score, 0.0 to 1.0"
+      - name: composite_rank
+        description: "Overall rank within run. 1 = winner."
+      - name: is_winner
+        description: "True if this ad has composite_rank = 1"

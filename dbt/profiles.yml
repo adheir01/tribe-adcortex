@@ -1,0 +1,22 @@
+# dbt connection profiles
+# This file tells dbt HOW to connect to your database.
+# It lives in dbt/profiles.yml (not the default ~/.dbt/ location)
+# so the project is self-contained and portable.
+#
+# To use: run dbt commands from the dbt/ directory with:
+#   dbt run --profiles-dir .
+#
+# The target "dev" points to your local Docker PostgreSQL on port 5435
+
+tribe_scorer:
+  target: dev
+  outputs:
+    dev:
+      type:     postgres
+      host:     localhost
+      port:     5435          # P04 convention — matches docker-compose.yml
+      user:     tribe
+      password: "{{ env_var('POSTGRES_PASSWORD', 'tribe_scorer_dev') }}"
+      dbname:   tribe_scorer
+      schema:   public
+      threads:  1

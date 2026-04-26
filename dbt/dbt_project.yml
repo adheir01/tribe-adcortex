@@ -1,0 +1,24 @@
+name: tribe_scorer
+version: "1.0.0"
+config-version: 2
+
+# dbt profile to use — matches the profile name in profiles.yml
+profile: tribe_scorer
+
+# Where dbt looks for model SQL files
+model-paths:   ["models"]
+seed-paths:    ["seeds"]
+macro-paths:   ["macros"]
+target-path:   "target"
+clean-targets: ["target", "dbt_packages"]
+
+models:
+  tribe_scorer:
+    staging:
+      # Staging models are views — no storage cost, always fresh
+      +materialized: view
+      +schema: staging
+    mart:
+      # Mart models are tables — pre-computed for dashboard query speed
+      +materialized: table
+      +schema: mart
