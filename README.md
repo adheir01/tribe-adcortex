@@ -37,7 +37,7 @@ This kind of pattern is invisible in aggregate metrics but becomes clear in a ti
 
 ---
 
-## Process & Results
+## Results
 
 **Timeline — where each ad loses people**
 ![Timeline Chart](assets/timeline.png)
