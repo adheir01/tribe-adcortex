@@ -52,3 +52,39 @@ CREATE TABLE IF NOT EXISTS scoring_runs (
 -- ── Indexes for dashboard query performance ───────────────────────────────────
 CREATE INDEX IF NOT EXISTS idx_roi_scores_run_ad ON raw_roi_scores(run_id, ad_name);
 CREATE INDEX IF NOT EXISTS idx_top_regions_run_ad ON top_regions(run_id, ad_name);
+
+-- ── ROI time series table ─────────────────────────────────────────────────────
+-- Stores per-second activation per ROI group per ad per run.
+-- This is the time series data that enables timeline charts and derived metrics.
+-- One row per (run_id, ad_name, roi_group, second_index).
+
+CREATE TABLE IF NOT EXISTS roi_timeseries (
+    id           SERIAL PRIMARY KEY,
+    run_id       TEXT    NOT NULL,
+    ad_name      TEXT    NOT NULL,
+    roi_group    TEXT    NOT NULL,
+    second_index INT     NOT NULL,   -- 0-based second within the ad
+    activation   FLOAT   NOT NULL,   -- mean predicted fMRI activation at this second
+    loaded_at    TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_timeseries_run_ad
+    ON roi_timeseries(run_id, ad_name);
+
+-- ── Derived metrics table ─────────────────────────────────────────────────────
+-- Stores computed metrics per ad per run.
+-- These are calculated from the time series in run_tribe.py.
+
+CREATE TABLE IF NOT EXISTS derived_metrics (
+    id                    SERIAL PRIMARY KEY,
+    run_id                TEXT    NOT NULL,
+    ad_name               TEXT    NOT NULL,
+    hook_strength         FLOAT,   -- avg(attention+motion+emotion) in first 3s
+    mid_retention         FLOAT,   -- avg(attention) in seconds 3-10
+    peak_emotion_second   INT,     -- second index of highest emotion activation
+    peak_emotion_value    FLOAT,   -- value at peak emotion second
+    attention_decay_rate  FLOAT,   -- linear slope of attention over time
+    attention_pattern     TEXT,    -- hook_and_drop / slow_build / sustained
+    loaded_at             TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(run_id, ad_name)
+);

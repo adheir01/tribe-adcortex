@@ -150,8 +150,8 @@ def make_comparison_heatmap(df_wide: pd.DataFrame) -> go.Figure:
         showscale    = True,
         hovertemplate = "<b>%{y}</b> — %{x}<br>Z-score: %{z:.2f}<extra></extra>",
         colorbar     = dict(
-        title      = dict(text="Z-score", font=dict(color="#E0E0E0")),
-        tickfont   = dict(color="#E0E0E0"),
+            title      = dict(text="Z-score", font=dict(color="#E0E0E0")),
+            tickfont   = dict(color="#E0E0E0"),
         ),
     ))
 
@@ -235,7 +235,7 @@ def make_winner_gauge(df_wide: pd.DataFrame) -> go.Figure:
     fig.update_layout(
         paper_bgcolor = "rgba(0,0,0,0)",
         font          = dict(color="#E0E0E0"),
-        height        = 220,
+        height        = 160,
         margin        = dict(l=20, r=20, t=40, b=20),
     )
     return fig, normalised
@@ -267,5 +267,151 @@ def make_top_regions_chart(df_regions: pd.DataFrame, ad_name: str) -> go.Figure:
         xaxis         = dict(visible=False),
         yaxis         = dict(color="#E0E0E0"),
         margin        = dict(l=10, r=10, t=10, b=10),
+    )
+    return fig
+
+
+def make_timeline_chart(df_timeseries, ad_name, roi_groups=None):
+    """
+    Line chart showing activation per second for selected ROI groups.
+
+    df_timeseries: DataFrame with columns ad_name, roi_group, second_index, activation
+    ad_name: which ad to plot
+    roi_groups: list of roi_group keys to show (defaults to attention/memory/emotion)
+
+    This is the mentor-recommended diagnostic view — shows:
+    - Where attention drops off (hook and drop pattern)
+    - Where emotion peaks
+    - Whether memory signals build or fade
+    """
+    import plotly.graph_objects as go
+
+    if roi_groups is None:
+        roi_groups = ["attention", "emotion", "memory"]
+
+    df = df_timeseries[
+        (df_timeseries["ad_name"] == ad_name) &
+        (df_timeseries["roi_group"].isin(roi_groups))
+    ].copy()
+
+    if df.empty:
+        return go.Figure()
+
+    GROUP_COLORS = {
+        "attention": "#FFB703",
+        "emotion":   "#F72585",
+        "memory":    "#06D6A0",
+        "visual":    "#4361EE",
+        "motion":    "#7209B7",
+        "auditory":  "#F72585",
+        "language":  "#3A86FF",
+        "decision":  "#118AB2",
+    }
+
+    fig = go.Figure()
+
+    for roi in roi_groups:
+        subset = df[df["roi_group"] == roi].sort_values("second_index")
+        if subset.empty:
+            continue
+        color = GROUP_COLORS.get(roi, "#888888")
+        fig.add_trace(go.Scatter(
+            x    = subset["second_index"],
+            y    = subset["activation"],
+            mode = "lines",
+            name = roi.capitalize(),
+            line = dict(color=color, width=2.5),
+            hovertemplate = f"<b>{roi}</b><br>Second: %{{x}}<br>Activation: %{{y:.4f}}<extra></extra>",
+        ))
+
+    # Add hook zone annotation (first 3 seconds)
+    max_second = df["second_index"].max()
+    fig.add_vrect(
+        x0=0, x1=min(3, max_second),
+        fillcolor="rgba(255,183,3,0.08)",
+        line_width=0,
+        annotation_text="Hook zone",
+        annotation_position="top left",
+        annotation_font=dict(color="#FFB703", size=10),
+    )
+
+    fig.update_layout(
+        xaxis_title   = "Second",
+        yaxis_title   = "Mean Activation",
+        paper_bgcolor = "rgba(0,0,0,0)",
+        plot_bgcolor  = "rgba(0,0,0,0)",
+        font          = dict(color="#E0E0E0", size=12),
+        xaxis         = dict(color="#E0E0E0", gridcolor="rgba(255,255,255,0.08)"),
+        yaxis         = dict(color="#E0E0E0", gridcolor="rgba(255,255,255,0.08)"),
+        legend        = dict(bgcolor="rgba(255,255,255,0.05)", bordercolor="rgba(255,255,255,0.1)", borderwidth=1),
+        margin        = dict(l=10, r=10, t=20, b=40),
+        hovermode     = "x unified",
+    )
+    return fig
+
+
+def make_derived_metrics_table(df_derived, ad_labels=None):
+    """
+    Summary table of derived metrics for all ads in a run.
+
+    Shows hook strength, mid retention, peak emotion second,
+    attention decay rate, and pattern classification side by side.
+    """
+    import plotly.graph_objects as go
+
+    if df_derived.empty:
+        return go.Figure()
+
+    ad_labels = ad_labels or {}
+
+    PATTERN_LABELS = {
+        "hook_and_drop": "📉 Hook & Drop",
+        "slow_build":    "📈 Slow Build",
+        "sustained":     "➡️ Sustained",
+    }
+
+    ads     = df_derived["ad_name"].tolist()
+    labels  = [ad_labels.get(a, a.upper()) for a in ads]
+
+    def fmt(val, decimals=4):
+        if val is None or (hasattr(val, '__class__') and val.__class__.__name__ == 'float' and val != val):
+            return "N/A"
+        try:
+            return f"{float(val):.{decimals}f}"
+        except Exception:
+            return str(val)
+
+    fig = go.Figure(data=[go.Table(
+        header=dict(
+            values    = ["<b>Ad</b>", "<b>Hook Strength</b>", "<b>Mid Retention</b>",
+                         "<b>Peak Emotion (s)</b>", "<b>Attn Decay</b>", "<b>Pattern</b>"],
+            fill_color= "#1B2838",
+            font      = dict(color="#C8D6E5", size=12),
+            align     = "left",
+            line_color= "rgba(255,255,255,0.1)",
+        ),
+        cells=dict(
+            values=[
+                labels,
+                [fmt(df_derived.loc[df_derived["ad_name"]==a, "hook_strength"].values[0]) for a in ads],
+                [fmt(df_derived.loc[df_derived["ad_name"]==a, "mid_retention"].values[0]) for a in ads],
+                [str(int(df_derived.loc[df_derived["ad_name"]==a, "peak_emotion_second"].values[0]))
+                 if df_derived.loc[df_derived["ad_name"]==a, "peak_emotion_second"].values[0] is not None
+                 else "N/A" for a in ads],
+                [fmt(df_derived.loc[df_derived["ad_name"]==a, "attention_decay_rate"].values[0], 5) for a in ads],
+                [PATTERN_LABELS.get(
+                    str(df_derived.loc[df_derived["ad_name"]==a, "attention_pattern"].values[0]), "N/A")
+                 for a in ads],
+            ],
+            fill_color = [["#0D1117", "#111827"] * (len(ads) // 2 + 1)][:len(ads)],
+            font       = dict(color="#C8D6E5", size=11),
+            align      = "left",
+            line_color = "rgba(255,255,255,0.06)",
+        )
+    )])
+
+    fig.update_layout(
+        paper_bgcolor = "rgba(0,0,0,0)",
+        margin        = dict(l=0, r=0, t=10, b=0),
     )
     return fig

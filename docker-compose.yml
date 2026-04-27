@@ -1,7 +1,7 @@
 version: "3.9"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Project 04 — TRIBE v2 Ad Creative Neural Engagement Scorer
+# Project 04 — tribe-adcortex
 # Port convention (consistent across all 4 projects):
 #   PostgreSQL: 5435   Streamlit: 8504
 # All ports bound to 127.0.0.1 — never exposed to public internet
@@ -18,7 +18,7 @@ services:
       POSTGRES_USER:     tribe
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "127.0.0.1:5435:5432"   # host:container — 5435 is P04 convention
+      - "127.0.0.1:5435:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -35,13 +35,16 @@ services:
       dockerfile: Dockerfile
     container_name: tribe_app
     ports:
-      - "127.0.0.1:8504:8501"   # Streamlit always runs on 8501 inside container
+      - "127.0.0.1:8504:8501"
     environment:
       PYTHONPATH:   /app
       DATABASE_URL: postgresql://tribe:${POSTGRES_PASSWORD}@db:5432/tribe_scorer
     volumes:
-      - ./results:/app/results   # mount results folder — drop new JSONs without rebuild
-      - ./app:/app               # live code reload during development
+      - ./results:/app/results       # results JSON files
+      - ./creatives:/app/creatives   # ad MP4 files — upload page reads/writes here
+      - ./remote:/app/remote         # inference scripts — upload page sends these to pod
+      - ./app:/app                   # live code reload
+      - ~/.ssh:/root/.ssh:ro         # SSH keys for paramiko (read-only)
     depends_on:
       db:
         condition: service_healthy

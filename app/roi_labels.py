@@ -6,172 +6,259 @@ roi_labels.py — ROI metadata for dashboard display
 PURPOSE
 -------
 Single source of truth for how each ROI group is named, described, and
-displayed in the dashboard. Separating this from charts.py means you can
-update labels and colours in one place without touching visualisation code.
-
-This is the "data dictionary" layer that translates neuroscience terminology
-into marketing language your audience actually understands.
+displayed in the dashboard. All framing follows the mentor's guidance:
+- "signals correlated with X" not "predicts X"
+- "proxy for" not "measures"
+- "cognitive control" not "decision-making" or "purchase intent"
 """
-
-# ── ROI display metadata ──────────────────────────────────────────────────────
-# Keys match the roi_group values stored in PostgreSQL
 
 ROI_META = {
     "visual": {
         "label":       "Visual Cortex",
         "short":       "Visual",
-        "hcp_regions": ["V1", "V2", "V4"],
         "brain_area":  "Occipital lobe",
-        "ad_angle":    "Raw visual attention",
+        "ad_angle":    "Proxy for visual scene registration",
         "explain":     (
-            "V1 and V2 are the brain's first visual processing stages — they respond "
-            "to light, contrast, colour, and edges. High activation here means the "
-            "creative is visually registering strongly. V4 adds colour and form processing."
+            "These regions handle the first stage of visual processing — light, contrast, "
+            "colour, edges, and form. Higher activation is correlated with the creative "
+            "registering strongly as a visual stimulus. Not a measure of aesthetic quality."
         ),
-        "marketing":   "A strong visual score means the creative immediately catches "
-                       "the eye. Low visual activation often means the opening frames "
-                       "are too slow or low-contrast.",
+        "marketing":   "Low visual signal often points to low-contrast or slow-moving "
+                       "opening frames. Useful for comparing visual styles, not for "
+                       "predicting whether someone will like what they see.",
         "color":       "#4361EE",
         "icon":        "👁",
     },
     "motion": {
         "label":       "Motion Areas",
         "short":       "Motion",
-        "hcp_regions": ["MT", "MST", "V3CD"],
         "brain_area":  "Temporal-occipital junction",
-        "ad_angle":    "Dynamic scene processing",
+        "ad_angle":    "Proxy for dynamic visual processing",
         "explain":     (
-            "Area MT (middle temporal) is the brain's dedicated motion detector. "
-            "It fires strongly for moving objects, camera cuts, and dynamic visual changes. "
-            "MST extends to optic flow — the feeling of moving through space."
+            "Area MT and surrounding regions respond to moving objects, camera cuts, "
+            "and optic flow. Activation here is correlated with how much dynamic visual "
+            "change the ad contains — not whether that change is effective."
         ),
-        "marketing":   "High motion scores favour fast-cut creatives with strong camera "
-                       "movement. Slow, static ads score lower here — which isn't "
-                       "always bad if the goal is calm brand building.",
+        "marketing":   "Fast-cut ads will reliably score higher here than slow, static ones. "
+                       "This is a style signal, not a quality signal. Useful for understanding "
+                       "the visual rhythm of different creative approaches.",
         "color":       "#7209B7",
         "icon":        "⚡",
     },
     "auditory": {
         "label":       "Auditory Cortex",
         "short":       "Audio",
-        "hcp_regions": ["A1", "LBelt", "MBelt"],
         "brain_area":  "Superior temporal gyrus",
-        "ad_angle":    "Music and voiceover engagement",
+        "ad_angle":    "Proxy for auditory stimulus processing",
         "explain":     (
-            "A1 (primary auditory cortex) processes sound at the most basic level — "
-            "pitch, volume, rhythm. The lateral and medial belt regions handle more "
-            "complex sounds including speech melody and musical patterns."
+            "Primary auditory cortex and surrounding belt regions process pitch, rhythm, "
+            "speech melody, and complex sounds. Activation is correlated with how "
+            "much auditory content the brain is processing — not whether it's enjoyed."
         ),
-        "marketing":   "A strong audio score means the soundtrack or voiceover is "
-                       "creating neural engagement. Consider this when A/B testing "
-                       "music tracks or comparing voiced vs. silent ads.",
+        "marketing":   "Useful for comparing music tracks, voiced vs. unvoiced ads, "
+                       "or different voiceover styles. A strong audio signal means "
+                       "the sound is being actively processed.",
         "color":       "#F72585",
         "icon":        "🎵",
     },
     "language": {
         "label":       "Language Network",
         "short":       "Language",
-        "hcp_regions": ["44", "45", "IFSp"],
         "brain_area":  "Inferior frontal gyrus (Broca's area)",
-        "ad_angle":    "Verbal messaging comprehension",
+        "ad_angle":    "Proxy for verbal content processing",
         "explain":     (
-            "Broca's area (areas 44 and 45) is central to language processing — "
-            "understanding speech, reading text on screen, and semantic meaning. "
-            "High activation here means the verbal content of the ad is being "
-            "actively processed and understood."
+            "Broca's area is associated with speech comprehension, reading text on screen, "
+            "and semantic processing. Higher activation is correlated with the brain "
+            "actively engaging with verbal content — not with message clarity or persuasion."
         ),
-        "marketing":   "Test different taglines, voiceover scripts, or on-screen text. "
-                       "A low language score might mean the copy is being ignored or "
-                       "is too complex to process quickly.",
+        "marketing":   "Compare taglines, voiceover scripts, or on-screen text. "
+                       "A low language signal may mean verbal content is being ignored "
+                       "or processed passively. Treat as a hypothesis, not a verdict.",
         "color":       "#3A86FF",
         "icon":        "💬",
     },
     "memory": {
-        "label":       "Memory Encoding",
+        "label":       "Memory-correlated Regions",
         "short":       "Memory",
-        "hcp_regions": ["PHA1", "PHA2", "TF"],
         "brain_area":  "Parahippocampal cortex",
-        "ad_angle":    "Brand recall likelihood",
+        "ad_angle":    "Proxy for scene memory encoding processes",
         "explain":     (
-            "The parahippocampal areas (PHA1, PHA2) and temporal-fusiform cortex "
-            "are directly involved in encoding new memories — particularly for scenes "
-            "and visual contexts. This is the region most predictive of whether someone "
-            "will remember the brand or message the next day."
+            "Parahippocampal and temporal-fusiform regions are associated with scene and "
+            "context memory. Activation here is correlated with memory encoding processes — "
+            "not a direct measure of whether someone will recall the brand or message."
         ),
-        "marketing":   "This is arguably the most important metric for brand advertisers. "
-                       "High memory scores predict recall in post-campaign surveys. "
-                       "If memory is low but attention is high, you have engagement "
-                       "without retention — common with visually impressive but brand-light ads.",
+        "marketing":   "Of the 8 groups, this is most commonly cited in neuromarketing "
+                       "literature as correlated with later recall. Treat as a useful "
+                       "signal, not a recall guarantee. High motion with low memory "
+                       "signal may indicate stimulation without retention.",
         "color":       "#06D6A0",
         "icon":        "🧠",
     },
     "attention": {
         "label":       "Attention Network",
         "short":       "Attention",
-        "hcp_regions": ["AIP", "LIPv", "VIP"],
         "brain_area":  "Intraparietal sulcus",
-        "ad_angle":    "Sustained attentional engagement",
+        "ad_angle":    "Proxy for sustained attentional engagement",
         "explain":     (
-            "The intraparietal sulcus (IPS) is the hub of the dorsal attention network. "
-            "It controls where attention is directed and sustains it over time. "
-            "AIP (anterior), LIPv (lateral), and VIP (ventral) cover spatial attention, "
-            "visual salience tracking, and multisensory attention respectively."
+            "The intraparietal sulcus is a hub of the dorsal attention network — "
+            "associated with directing and sustaining attention over time. "
+            "Activation is correlated with attentional engagement, not with interest "
+            "or preference."
         ),
-        "marketing":   "Attention score answers: 'Is the brain staying with this ad?' "
-                       "A high early spike that drops off signals the creative loses "
-                       "people mid-way. Sustained high attention throughout is rare and "
-                       "very valuable.",
+        "marketing":   "The time series view is more valuable than the summary score here. "
+                       "A declining attention signal over time shows where the ad loses "
+                       "people. A rising signal shows a slow-build creative.",
         "color":       "#FFB703",
         "icon":        "🎯",
     },
     "emotion": {
-        "label":       "Emotion Processing",
+        "label":       "Emotion-correlated Regions",
         "short":       "Emotion",
-        "hcp_regions": ["TGd", "TE1a", "TE1p"],
         "brain_area":  "Temporal pole / superior temporal sulcus",
-        "ad_angle":    "Emotional resonance",
+        "ad_angle":    "Proxy for emotional and social stimulus processing",
         "explain":     (
-            "The temporal pole (TGd) and superior temporal regions process the emotional "
-            "and social meaning of stimuli — faces, voices with emotional tone, and "
-            "socially meaningful scenes. This network is central to empathy and "
-            "emotional response to storytelling."
+            "Temporal pole and superior temporal regions are associated with processing "
+            "the emotional and social content of stimuli — faces, emotional voices, "
+            "and socially meaningful scenes. Activation is correlated with emotional "
+            "processing, not with positive sentiment specifically."
         ),
-        "marketing":   "Emotion is a strong predictor of purchase intent and brand affinity. "
-                       "Ads that tell human stories, show faces expressing emotion, or use "
-                       "emotionally resonant music score highly here. Great for evaluating "
-                       "lifestyle vs. product-feature ad concepts.",
+        "marketing":   "Look at the time series to find the peak emotion second — "
+                       "that's where the emotional climax of the ad sits. "
+                       "If it occurs after second 10, many scroll-feed viewers may "
+                       "never reach it.",
         "color":       "#FB5607",
         "icon":        "❤️",
     },
     "decision": {
-        "label":       "Prefrontal Cortex",
-        "short":       "Decision",
-        "hcp_regions": ["p9-46v", "IFJa", "IFJp"],
+        "label":       "Cognitive Control Regions",
+        "short":       "Cognitive",
         "brain_area":  "Dorsolateral prefrontal cortex",
-        "ad_angle":    "Cognitive engagement and intent signals",
+        "ad_angle":    "Proxy for executive function and task engagement",
         "explain":     (
-            "The DLPFC (area 9-46) is involved in working memory, reasoning, and "
-            "decision-making. The inferior frontal junction (IFJa/p) handles cognitive "
-            "control and task switching. High activation here means the creative is "
-            "triggering active cognitive processing — the brain is working with the content."
+            "Dorsolateral prefrontal cortex and inferior frontal junction are associated "
+            "with cognitive control, working memory, and task switching. "
+            "Activation is correlated with active cognitive engagement with the content — "
+            "not with decision-making, intent, or purchase likelihood."
         ),
-        "marketing":   "High decision scores are important for direct-response ads "
-                       "where you want the viewer thinking about a purchase. Lower scores "
-                       "are expected for pure brand awareness plays — which is fine. "
-                       "Use this to validate whether your CTA is cognitively landing.",
+        "marketing":   "Higher signal here suggests the ad is demanding more cognitive "
+                       "processing — which may reflect complexity, text-heavy content, "
+                       "or unfamiliar concepts. Not inherently good or bad. "
+                       "Do not interpret as purchase intent.",
         "color":       "#118AB2",
         "icon":        "⚖️",
     },
 }
 
-# Ordered list for consistent chart display
-ROI_ORDER = ["visual", "motion", "auditory", "language", "memory", "attention", "emotion", "decision"]
-
-# Short labels for chart axes
+ROI_ORDER        = ["visual", "motion", "auditory", "language", "memory", "attention", "emotion", "decision"]
 ROI_SHORT_LABELS = {k: v["short"] for k, v in ROI_META.items()}
+ROI_COLORS       = {k: v["color"] for k, v in ROI_META.items()}
+HERO_ROIS        = ["memory", "attention"]
 
-# Hex colours for chart series
-ROI_COLORS = {k: v["color"] for k, v in ROI_META.items()}
+# ── Failure / engagement pattern definitions ──────────────────────────────────
+# Used by the Creative Diagnosis section in the dashboard.
+# Pattern names map to attention_pattern values from derived_metrics table.
 
-# The two "hero" metrics — what matters most for ad recall
-HERO_ROIS = ["memory", "attention"]
+PATTERN_META = {
+    "hook_and_drop": {
+        "label":      "📉 Hook & Drop",
+        "color":      "#DC2626",
+        "summary":    "Strong opening, rapid disengagement",
+        "detail":     (
+            "Predicted attention activates strongly in the first few seconds then "
+            "declines consistently. The creative is stopping the scroll — but likely "
+            "losing viewers before the message lands. The hook is working. "
+            "The mid-section probably isn't."
+        ),
+        "suggestion": "Tighten the mid-section or improve narrative continuation. "
+                      "Test a version where the energy or visual dynamism after second 3 "
+                      "matches the opening. Ask: what reason does the viewer have to stay?",
+        "test_next":  "Test alternative mid-section pacing — faster cuts, earlier payoff, "
+                      "or a second visual hook at second 5–7.",
+    },
+    "slow_build": {
+        "label":      "📈 Slow Build",
+        "color":      "#059669",
+        "summary":    "Rising engagement — weak opening",
+        "detail":     (
+            "Predicted attention signal increases over the duration of the ad. "
+            "The payoff is real but it arrives late. In short-form scroll feeds "
+            "where most viewers decide within 3 seconds, many may not reach it."
+        ),
+        "suggestion": "Front-load more of the creative's best material. "
+                      "Test a version that opens with a face, motion, or text hook "
+                      "before transitioning into the build.",
+        "test_next":  "Test an alternative opening — lead with your strongest frame "
+                      "from the second half of the current cut.",
+    },
+    "sustained": {
+        "label":      "➡️ Sustained",
+        "color":      "#4361EE",
+        "summary":    "Consistent signal throughout",
+        "detail":     (
+            "Predicted attention signal is relatively flat — neither building nor "
+            "decaying significantly. Check the absolute level: sustained high is "
+            "the ideal outcome. Sustained low means no moment is generating strong "
+            "predicted attentional signal."
+        ),
+        "suggestion": "If the absolute level is low, introduce a stronger visual or "
+                      "emotional peak. If it is high, this is a stable creative — "
+                      "test whether a stronger hook can push it further.",
+        "test_next":  "Introduce one deliberate motion or emotional trigger earlier — "
+                      "faces, unexpected visuals, or a pace change — and compare.",
+    },
+}
+
+# Additional diagnostic patterns derived from combinations of metrics
+DIAGNOSTIC_RULES = [
+    {
+        "id":        "high_motion_low_memory",
+        "label":     "⚡🧠 Overstimulated — High Motion, Low Memory Signal",
+        "condition": lambda d: (
+            d.get("motion_score", 0) is not None and
+            d.get("memory_score", 0) is not None and
+            d.get("motion_score", 0) > 0.04 and
+            d.get("memory_score", 0) < 0.03
+        ),
+        "detail": (
+            "High dynamic visual activity with low memory-correlated signal. "
+            "The creative is visually busy but may not be generating the slower, "
+            "consolidating processes associated with scene memory encoding. "
+            "Stimulation without retention."
+        ),
+        "test_next": "Introduce a moment of visual calm — a held shot, a face, or a "
+                     "static brand frame — and test whether memory signal improves.",
+    },
+    {
+        "id":        "peak_emotion_late",
+        "label":     "❤️⏱ Emotional Peak Too Late",
+        "condition": lambda d: (
+            d.get("peak_emotion_second") is not None and
+            d.get("peak_emotion_second", 0) > 10
+        ),
+        "detail": (
+            "The predicted emotional peak occurs after second 10. In short-form "
+            "feeds most viewers decide within 3–5 seconds — many will not reach "
+            "this moment. The emotional payoff exists; it just arrives too late."
+        ),
+        "test_next": "Test a version that introduces an earlier emotional beat — "
+                     "a face with expression, an emotionally charged audio moment, "
+                     "or a reordered sequence that front-loads the climax.",
+    },
+    {
+        "id":        "weak_hook",
+        "label":     "🎣 Weak Hook Signal",
+        "condition": lambda d: (
+            d.get("hook_strength") is not None and
+            d.get("hook_strength", 0) < 0.02
+        ),
+        "detail": (
+            "Hook strength — proxy for early scroll-stopping potential — is low. "
+            "The opening frames may lack sufficient visual contrast, motion, or "
+            "emotional content to generate strong predicted engagement signals "
+            "in the first 3 seconds."
+        ),
+        "test_next": "Test alternative opening frames: a face in motion, unexpected "
+                     "visual contrast, bold on-screen text, or a sound that demands "
+                     "attention before the main content begins.",
+    },
+]

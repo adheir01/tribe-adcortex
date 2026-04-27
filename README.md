@@ -1,8 +1,8 @@
 # tribe-adcortex
 
-> Predict which ad creative your audience's brain will actually engage with — before spending the media budget.
+> A time series diagnostic tool for ad creative testing using predicted fMRI brain signals.
 
-Uses **TRIBE v2** (Meta FAIR, 2026) to run predicted fMRI brain encoding on video ad creatives and scores them across 8 neurologically grounded regions: visual attention, motion processing, auditory engagement, language comprehension, memory encoding, sustained attention, emotional resonance, and prefrontal decision circuits.
+Uses **TRIBE v2** (Meta FAIR, 2026) to predict second-by-second cortical brain responses to video ad creatives. Scores across 8 brain signal groups and computes derived engagement metrics — hook strength, attention decay, peak emotion timing — to help understand *how* engagement evolves over time, not just an overall score.
 
 **Built by Tobi** · Python 3.12 · PostgreSQL · dbt · Streamlit · Docker · RunPod
 
@@ -10,27 +10,50 @@ Uses **TRIBE v2** (Meta FAIR, 2026) to run predicted fMRI brain encoding on vide
 
 ## What it does
 
-Takes 3–4 MP4 ad variants, runs them through TRIBE v2 on a rented GPU, and outputs a dashboard showing which creative produces the strongest predicted neural engagement — specifically in the brain regions most associated with memory encoding and purchase intent.
+Takes 3–4 MP4 ad variants through TRIBE v2 on a rented GPU and outputs:
 
-The pipeline costs ~$2–3 in GPU compute per run.
+- **Per-second time series** — attention, emotion, memory signals over the duration of each ad
+- **Derived metrics** — hook strength (0–3s), mid retention (3–10s), peak emotion second, attention decay rate
+- **ROI group summaries** — 8 brain signal groups, mean activation across the full ad
+- **Composite score** — exploratory summary across signal groups (not for outcome ranking)
+
+The framing is diagnostic, not predictive: *"these signals are correlated with attention and memory processes"* — not *"this predicts purchase intent."*
 
 ---
 
-## How TRIBE v2 works
+## The time series insight
 
-TRIBE v2 is a multimodal brain encoding model trained on 500+ hours of real fMRI data from 700+ subjects. Given a video, it predicts the cortical brain response an average person would show — across 20,484 vertices on the fsaverage5 surface.
+`preds` from TRIBE v2 has shape `(n_seconds, 20484)` — one prediction per second per cortical vertex. Collapsing this to a single mean discards the most actionable signal: how engagement changes over time.
 
-Three encoders process the stimulus in parallel:
+Two ads can both average 0.05 but behave completely differently:
+- **Ad A**: spikes at second 2, then drops — hook and drop pattern
+- **Ad B**: slow build, peaks at second 12 — sustained engagement
 
-| Encoder | Input | What it captures |
+The timeline view makes this visible. The derived metrics quantify it.
+
+---
+
+## Derived metrics
+
+| Metric | Definition | Why it matters |
 |---|---|---|
-| V-JEPA2 | Video frames | Visual features, motion, scene content |
-| Wav2Vec-BERT | Audio track | Speech, music, environmental sounds |
-| LLaMA 3.2 | Transcript | Semantics, language meaning |
+| Hook Strength | avg(attention + motion + emotion) in seconds 0–3 | The opening window — most critical in a feed |
+| Mid Retention | avg(attention) in seconds 3–10 | Does the ad hold after the hook? |
+| Peak Emotion Second | second index of highest emotion signal | Where the emotional climax sits |
+| Attention Decay Rate | linear slope of attention over time | Negative = hook and drop, positive = slow build |
+| Attention Pattern | hook_and_drop / slow_build / sustained | Human-readable classification |
 
-A Transformer fuses all three and outputs `preds` — shape `(n_seconds, 20484)`. One predicted fMRI value per second per cortical vertex.
+---
 
-Predictions represent an **average subject** — not demographic-specific. Individual variation is not captured.
+## Honest framing
+
+ROI vertex masks use approximate spatial splits — not named atlas parcels. Relative comparisons between ads scored in the same run are valid. Absolute values are not meaningful across experiments.
+
+Safer language:
+- ✓ "signals correlated with memory encoding"
+- ✓ "predicted attentional activation"
+- ✗ "predicts purchase intent"
+- ✗ "measures brand recall"
 
 ---
 
@@ -41,8 +64,20 @@ Predictions represent an **average subject** — not demographic-specific. Indiv
 | Inference | TRIBE v2 · Python 3.12 · GPU (RunPod) |
 | Database | PostgreSQL 16 · port 5435 |
 | Transform | dbt (staging + mart) |
-| Dashboard | Streamlit · port 8504 |
+| Dashboard | Streamlit · port 8504 · 5 pages |
 | Containers | Docker + docker-compose |
+
+---
+
+## App pages
+
+| Page | What it does |
+|---|---|
+| **Main** | Dashboard — gauges, radar, heatmap, derived metrics, timeline charts, ROI deep dive |
+| **Creatives** | Upload MP4s via drag and drop, label, preview, delete |
+| **Inference** | Paste RunPod IP/port → one-click automated inference |
+| **History** | Compare runs within a campaign |
+| **Campaigns** | Create campaigns, assign runs, keep comparisons meaningful |
 
 ---
 
@@ -55,31 +90,37 @@ tribe-adcortex/
 ├── .env.example
 │
 ├── remote/
-│   ├── run_tribe.py            # Inference + ROI extraction → roi_scores.json
-│   └── setup_pod.sh            # One-time pod environment setup
+│   ├── run_tribe.py            # Inference + time series extraction → roi_scores.json
+│   └── setup_pod.sh
 │
-├── results/                    # Drop roi_scores.json here after scp
-├── creatives/                  # MP4 ad variants — not committed to git
+├── results/
+├── creatives/
 │
 ├── scripts/
-│   └── init.sql
+│   └── init.sql                # Schema: raw_roi_scores, roi_timeseries, derived_metrics, campaigns
 │
 ├── app/
 │   ├── Dockerfile
 │   ├── requirements.txt
-│   ├── main.py
-│   ├── db.py
-│   ├── charts.py
-│   └── roi_labels.py
+│   ├── main.py                 # Dashboard
+│   ├── db.py                   # DB connection, JSON ingestion, timeseries queries
+│   ├── charts.py               # Plotly charts incl. timeline and derived metrics table
+│   ├── roi_labels.py
+│   └── pages/
+│       ├── 1_Creatives.py
+│       ├── 2_Inference.py
+│       ├── 3_History.py
+│       └── 4_Campaigns.py
 │
 └── dbt/
-├── dbt_project.yml
-├── profiles.yml
-└── models/
-├── sources.yml
-├── staging/stg_roi_scores.sql
-└── mart/mart_ad_comparison.sql
+    ├── dbt_project.yml
+    ├── profiles.yml
+    └── models/
+        ├── sources.yml
+        ├── staging/stg_roi_scores.sql
+        └── mart/mart_ad_comparison.sql
 ```
+
 ---
 
 ## Running it
@@ -87,113 +128,83 @@ tribe-adcortex/
 ### Prerequisites
 
 - Docker Desktop running
-- RunPod account with credits (~$5 is enough)
-- HuggingFace account + read token (`huggingface.co/settings/tokens`)
-- SSH key pair (`~/.ssh/id_ed25519`)
+- RunPod account (~$5 credit)
+- HuggingFace read token (`huggingface.co/settings/tokens`)
+- SSH key at `~/.ssh/id_ed25519`
 
 ### Step 1 — Local setup
 
 ```bash
 git clone https://github.com/adheir01/tribe-adcortex
 cd tribe-adcortex
-
 cp .env.example .env
-# Edit .env: set POSTGRES_PASSWORD and HF_TOKEN
-
-docker-compose down
-docker-compose up -d
+# Edit .env: POSTGRES_PASSWORD and HF_TOKEN
+docker-compose down && docker-compose up -d
 # Dashboard at http://localhost:8504
 ```
 
-### Step 2 — Prepare creatives
+### Step 2 — Creatives page
 
-Drop MP4 files into `creatives/`. Name them `ad_a.mp4`, `ad_b.mp4`, `ad_c.mp4` etc. Recommended: 15–30 seconds each.
+Upload MP4s via drag and drop. Label each one. Recommended: 15–30s each, vary one variable at a time (same concept, different hook / pacing / presence of human / motion).
 
-### Step 3 — RunPod inference
+### Step 3 — Inference page
 
-**Launch a pod on runpod.io:**
-- Template: PyTorch 2.8.0
-- GPU: RTX 5090 or A100 PCIe (32GB+ VRAM)
-- Container disk: 30GB · Volume disk: 0GB
-- Enable SSH terminal access
+Launch a RunPod pod (PyTorch 2.8, RTX 5090 or A100, 30GB disk, SSH enabled). Paste the IP and port. Click **Start inference run** — the app uploads files, runs TRIBE v2, streams live output, downloads results automatically.
 
-**Pod setup (one time per pod):**
-```bash
-ssh root@<pod-ip> -p <port> -i ~/.ssh/id_ed25519
+Terminate the pod when done (~$0.60–$1.00 per run).
 
-apt-get update -qq && apt-get install -y ffmpeg git curl
-curl -LsSf https://astral.sh/uv/install.sh | sh
-export PATH="$HOME/.local/bin:$PATH"
-mkdir -p ~/tribe_scorer/creatives ~/tribe_scorer/results ~/tribe_scorer/cache
+### Step 4 — Dashboard
 
-python3 -m venv ~/tribe_env && source ~/tribe_env/bin/activate
-pip install "tribev2[plotting] @ git+https://github.com/facebookresearch/tribev2.git"
-pip install whisperx mne huggingface_hub hf_transfer
-hf auth login
-```
+Sidebar → select `roi_scores.json` → Load. Explore timeline charts, derived metrics, radar, heatmap, ROI deep dive.
 
-**Upload files (local machine, second terminal):**
-```bash
-scp -P <port> -i ~/.ssh/id_ed25519 remote/run_tribe.py root@<pod-ip>:~/tribe_scorer/
-scp -P <port> -i ~/.ssh/id_ed25519 creatives/*.mp4 root@<pod-ip>:~/tribe_scorer/creatives/
-```
+### Step 5 — Campaigns
 
-**Run inference:**
-```bash
-source ~/tribe_env/bin/activate
-cd ~/tribe_scorer && python run_tribe.py
-```
-
-**Download results — then terminate the pod immediately:**
-```bash
-scp -P <port> -i ~/.ssh/id_ed25519 root@<pod-ip>:~/tribe_scorer/results/roi_scores.json ./results/
-```
-
-### Step 4 — Load results
-
-1. Open `http://localhost:8504`
-2. Sidebar → select `roi_scores.json` → **Load into database**
-3. Sidebar → select the run timestamp
-
-### Step 5 — dbt (optional)
-
-```bash
-pip install dbt-postgres
-cd dbt && dbt run --profiles-dir .
-```
+Create a campaign, assign the run to it. Use History to compare runs within the same campaign.
 
 ---
 
-## The 8 brain ROI groups
+## Experiment design advice
 
-| Group | What it measures for ads |
+The tool produces insight when you control variables. Compare:
+- Same concept, different hook (first 3 seconds changed)
+- Same concept, with vs without a person on screen
+- Same concept, fast-cut vs slow pacing
+- Same sport, different emotional tone
+
+Avoid comparing completely different concepts — the scores tell you nothing actionable.
+
+---
+
+## The 8 brain signal groups
+
+| Group | Correlated with |
 |---|---|
-| 👁 Visual | Raw visual attention |
+| 👁 Visual | Visual attention and scene registration |
 | ⚡ Motion | Dynamic scene processing — cuts, movement |
-| 🎵 Auditory | Music and voiceover engagement |
-| 💬 Language | Verbal messaging comprehension |
-| 🧠 Memory | Brand recall likelihood |
+| 🎵 Auditory | Music and speech processing |
+| 💬 Language | Verbal message comprehension |
+| 🧠 Memory | Scene memory encoding |
 | 🎯 Attention | Sustained attentional engagement |
-| ❤️ Emotion | Emotional resonance |
-| ⚖️ Decision | Cognitive engagement and intent signals |
+| ❤️ Emotion | Emotional and social processing |
+| ⚖️ Decision | Cognitive control and working memory |
 
-Composite score weights: Memory (30%) + Attention (25%) + Emotion (20%) + Decision (15%) + sensory (10%).
+Composite weights: Memory (30%) + Attention (25%) + Emotion (20%) + Decision (15%) + sensory (10%).
 
 ---
 
 ## Limitations
 
-- Predicts for an **average subject** — individual and demographic variation not captured
-- Trained on naturalistic film/speech, not commercial ads specifically
-- ROI vertex masks use approximate spatial splits — valid for relative comparison, not exact named region attribution
-- Scores are meaningful **within a run only**
-- **CC BY-NC 4.0** — non-commercial use only
+- Average subject prediction — individual and demographic variation not captured
+- Trained on naturalistic film/speech, not commercial ads
+- Approximate vertex splits, not named atlas parcels
+- Scores meaningful within a run only — do not compare across experiments
+- CC BY-NC 4.0 — non-commercial use only
 
 ---
 
 ## License note
 
-This project uses TRIBE v2 (`facebook/tribev2`) licensed under CC BY-NC 4.0. For portfolio and non-commercial research use only.
+Uses TRIBE v2 (`facebook/tribev2`) licensed under CC BY-NC 4.0. Portfolio and non-commercial research use only.
 
 ---
 
@@ -208,3 +219,11 @@ This project uses TRIBE v2 (`facebook/tribev2`) licensed under CC BY-NC 4.0. For
   year={2026}
 }
 ```
+
+---
+
+## Related
+
+- [instagram-fake-detector](https://github.com/adheir01/instagram-fake-detector) — Project 01
+- Project 02 — Influencer ROI Scorer
+- Project 03 — Engagement Anomaly Dashboard
