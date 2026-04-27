@@ -1,53 +1,81 @@
 # tribe-adcortex
 
-> A time series diagnostic tool for ad creative testing using predicted fMRI brain signals.
+> Exploring how engagement in video ads evolves over time, instead of relying on a single average score.
 
-Uses **TRIBE v2** (Meta FAIR, 2026) to predict second-by-second cortical brain responses to video ad creatives. Scores across 8 brain signal groups and computes derived engagement metrics — hook strength, attention decay, peak emotion timing — to help understand *how* engagement evolves over time, not just an overall score.
+This project analyses video ad creatives using time-series signals and surfaces how attention, emotion, and memory-related signals change second by second.
 
-**Built by Tobi** · Python 3.12 · PostgreSQL · dbt · Streamlit · Docker · RunPod
+**Built by Tobi** · Python · PostgreSQL · dbt · Streamlit · Docker
+
+---
+
+## What this is
+
+Most ad analysis collapses performance into a single number — CTR, average watch time, a composite score.
+
+This project explores a different angle:
+
+> Two ads can have the same average performance but behave completely differently over time.
+
+- One spikes early and drops
+- Another builds slowly and peaks later
+
+The goal is to make those patterns visible and measurable.
+
+---
+
+## Example insight
+
+Three chocolate ad variants scored in a recent run:
+
+- **Pouring chocolate into forms** — attention starts moderate, dips mid-way, recovers late. Slow build pattern. Peak emotion at second 10.
+- **Rich chocolate mixing** — below-baseline activation throughout, dramatic spike at the very end. Most viewers in a scroll feed never reach it.
+- **Chocolate syrup meal** — all three signals (attention, emotion, memory) build consistently from second 0 to second 15. The only creative that never loses the viewer.
+
+Same product category. Same duration. Completely different engagement trajectories.
+
+This kind of pattern is invisible in aggregate metrics but becomes clear in a time-series view.
 
 ---
 
 ## What it does
 
-Takes 3–4 MP4 ad variants through TRIBE v2 on a rented GPU and outputs:
-
-- **Per-second time series** — attention, emotion, memory signals over the duration of each ad
-- **Derived metrics** — hook strength (0–3s), mid retention (3–10s), peak emotion second, attention decay rate
-- **ROI group summaries** — 8 brain signal groups, mean activation across the full ad
-- **Composite score** — exploratory summary across signal groups (not for outcome ranking)
-
-The framing is diagnostic, not predictive: *"these signals are correlated with attention and memory processes"* — not *"this predicts purchase intent."*
+- Processes 3–4 video ad creatives per run
+- Generates per-second signals across 8 brain-correlated signal groups
+- Derives interpretable metrics:
+  - Hook strength (0–3s proxy for early engagement)
+  - Mid retention (3–10s sustained attention)
+  - Peak emotion timing
+  - Attention decay rate and pattern classification
+- Classifies engagement patterns: hook-and-drop / slow build / sustained
+- Flags potential issues: weak hook, late emotional peak, high motion with low memory signal
+- Stores results in PostgreSQL, transforms via dbt, visualises in Streamlit
 
 ---
 
-## The time series insight
+## The time-series idea
 
-`preds` from TRIBE v2 has shape `(n_seconds, 20484)` — one prediction per second per cortical vertex. Collapsing this to a single mean discards the most actionable signal: how engagement changes over time.
+The underlying model (TRIBE v2) produces predictions per second across cortical signals.
 
-Two ads can both average 0.05 but behave completely differently:
-- **Ad A**: spikes at second 2, then drops — hook and drop pattern
-- **Ad B**: slow build, peaks at second 12 — sustained engagement
+Instead of averaging everything into a single number, this project keeps the timeline intact. That allows you to see:
 
-The timeline view makes this visible. The derived metrics quantify it.
+- where attention spikes
+- where it drops
+- how long engagement is sustained
+- when emotional peaks occur relative to the hook window
+
+The dashboard's primary view is a second-by-second line chart — not a bar chart of averages.
 
 ---
 
 ## Derived metrics
 
-| Metric | Definition | Why it matters |
-|---|---|---|
-| Hook Strength | avg(attention + motion + emotion) in seconds 0–3 | The opening window — most critical in a feed |
-| Mid Retention | avg(attention) in seconds 3–10 | Does the ad hold after the hook? |
-| Peak Emotion Second | second index of highest emotion signal | Where the emotional climax sits |
-| Attention Decay Rate | linear slope of attention over time | Negative = hook and drop, positive = slow build |
-| Attention Pattern | hook_and_drop / slow_build / sustained | Human-readable classification |
-
----
-
-## A note on interpretation
-
-Scores represent predicted neural activation — not direct measurements. Use language like "signals correlated with" rather than "predicts" or "measures". Comparisons are meaningful within a run, not across separate experiments.
+| Metric | Description |
+|---|---|
+| Hook Strength | Proxy for early attentional engagement (seconds 0–3) |
+| Mid Retention | Sustained attention signal after the hook (seconds 3–10) |
+| Peak Emotion | Second index of highest emotion-correlated signal |
+| Attention Decay | Linear slope of attention over time — negative = declining |
+| Pattern | hook_and_drop / slow_build / sustained |
 
 ---
 
@@ -57,148 +85,81 @@ Scores represent predicted neural activation — not direct measurements. Use la
 |---|---|
 | Inference | TRIBE v2 · Python 3.12 · GPU (RunPod) |
 | Database | PostgreSQL 16 · port 5435 |
-| Transform | dbt (staging + mart) |
-| Dashboard | Streamlit · port 8504 · 5 pages |
+| Transform | dbt — staging views + mart tables |
+| Dashboard | Streamlit · 5-page app · port 8504 |
 | Containers | Docker + docker-compose |
+
+---
+
+## Architecture
+
+```
+Video creatives (MP4)
+        ↓
+TRIBE v2 — GPU inference (RunPod)
+        ↓
+Per-second signals (n_seconds × 20,484 cortical vertices)
+        ↓
+ROI group extraction + derived metrics (Python)
+        ↓
+PostgreSQL — raw_roi_scores · roi_timeseries · derived_metrics
+        ↓
+dbt — staging → mart (z-scores, rankings, pattern classification)
+        ↓
+Streamlit dashboard — timeline charts · diagnosis · trade-off cards
+```
 
 ---
 
 ## App pages
 
-| Page | What it does |
+| Page | Purpose |
 |---|---|
-| **Main** | Dashboard — gauges, radar, heatmap, derived metrics, timeline charts, ROI deep dive |
-| **Creatives** | Upload MP4s via drag and drop, label, preview, delete |
-| **Inference** | Paste RunPod IP/port → one-click automated inference |
-| **History** | Compare runs within a campaign |
-| **Campaigns** | Create campaigns, assign runs, keep comparisons meaningful |
+| Campaigns | Create campaigns, group runs for meaningful comparison |
+| Creatives | Upload MP4s, label each variant |
+| Inference | One-click automated RunPod inference |
+| Dashboard | Explore results — timelines, derived metrics, diagnosis |
+| History | Compare runs within a campaign |
 
 ---
 
-## Project structure
-
-```
-tribe-adcortex/
-│
-├── docker-compose.yml
-├── .env.example
-│
-├── remote/
-│   ├── run_tribe.py            # Inference + time series extraction → roi_scores.json
-│   └── setup_pod.sh
-│
-├── results/
-├── creatives/
-│
-├── scripts/
-│   └── init.sql                # Schema: raw_roi_scores, roi_timeseries, derived_metrics, campaigns
-│
-├── app/
-│   ├── Dockerfile
-│   ├── requirements.txt
-│   ├── main.py                 # Dashboard
-│   ├── db.py                   # DB connection, JSON ingestion, timeseries queries
-│   ├── charts.py               # Plotly charts incl. timeline and derived metrics table
-│   ├── roi_labels.py
-│   └── pages/
-│       ├── 1_Creatives.py
-│       ├── 2_Inference.py
-│       ├── 3_History.py
-│       └── 4_Campaigns.py
-│
-└── dbt/
-    ├── dbt_project.yml
-    ├── profiles.yml
-    └── models/
-        ├── sources.yml
-        ├── staging/stg_roi_scores.sql
-        └── mart/mart_ad_comparison.sql
-```
-
----
-
-## Running it
-
-### Prerequisites
-
-- Docker Desktop running
-- RunPod account (~$5 credit)
-- HuggingFace read token (`huggingface.co/settings/tokens`)
-- SSH key at `~/.ssh/id_ed25519`
-
-### Step 1 — Local setup
+## Running locally
 
 ```bash
 git clone https://github.com/adheir01/tribe-adcortex
 cd tribe-adcortex
 cp .env.example .env
-# Edit .env: POSTGRES_PASSWORD and HF_TOKEN
-docker-compose down && docker-compose up -d
-# Dashboard at http://localhost:8504
+# Edit .env: set POSTGRES_PASSWORD and HF_TOKEN
+docker-compose up -d
 ```
 
-### Step 2 — Creatives page
+Open `http://localhost:8504` and follow the workflow guide on the home screen.
 
-Upload MP4s via drag and drop. Label each one. Recommended: 15–30s each, vary one variable at a time (same concept, different hook / pacing / presence of human / motion).
-
-### Step 3 — Inference page
-
-Launch a RunPod pod (PyTorch 2.8, RTX 5090 or A100, 30GB disk, SSH enabled). Paste the IP and port. Click **Start inference run** — the app uploads files, runs TRIBE v2, streams live output, downloads results automatically.
-
-Terminate the pod when done (~$0.60–$1.00 per run).
-
-### Step 4 — Dashboard
-
-Sidebar → select `roi_scores.json` → Load. Explore timeline charts, derived metrics, radar, heatmap, ROI deep dive.
-
-### Step 5 — Campaigns
-
-Create a campaign, assign the run to it. Use History to compare runs within the same campaign.
+For GPU inference, a RunPod account is needed (~$0.20 per run on an A40).
 
 ---
 
-## Experiment design advice
+## Notes on interpretation
 
-The tool produces insight when you control variables. Compare:
-- Same concept, different hook (first 3 seconds changed)
-- Same concept, with vs without a person on screen
-- Same concept, fast-cut vs slow pacing
-- Same sport, different emotional tone
-
-Avoid comparing completely different concepts — the scores tell you nothing actionable.
-
----
-
-## The 8 brain signal groups
-
-| Group | Correlated with |
-|---|---|
-| 👁 Visual | Visual attention and scene registration |
-| ⚡ Motion | Dynamic scene processing — cuts, movement |
-| 🎵 Auditory | Music and speech processing |
-| 💬 Language | Verbal message comprehension |
-| 🧠 Memory | Scene memory encoding |
-| 🎯 Attention | Sustained attentional engagement |
-| ❤️ Emotion | Emotional and social processing |
-| ⚖️ Decision | Cognitive control and working memory |
-
-Composite weights: Memory (30%) + Attention (25%) + Emotion (20%) + Decision (15%) + sensory (10%).
+- Signals represent **predicted neural activation** — not direct measurements of human behaviour
+- Useful for **relative comparison within a run**, not across separate experiments
+- Best used when testing **variations of the same concept** — same product, one variable changed
+- Patterns are classifications of signal trajectories, not guarantees of real-world engagement
 
 ---
 
 ## Limitations
 
-- Average subject prediction — individual and demographic variation not captured
-- Trained on naturalistic film/speech, not commercial ads
-- Approximate vertex splits, not named atlas parcels
-- Scores meaningful within a run only — do not compare across experiments
-- CC BY-NC 4.0 — non-commercial use only
+- Based on model predictions, not real user behaviour or recall data
+- TRIBE v2 predicts for an average subject — individual and demographic variation not captured
+- Trained on naturalistic film and speech content, not commercial ads specifically
+- ROI vertex masks use approximate spatial splits — valid for relative comparison
 
 ---
 
 ## License note
 
-Uses TRIBE v2 (`facebook/tribev2`) licensed under CC BY-NC 4.0. Portfolio and non-commercial research use only.
+Uses TRIBE v2 (`facebook/tribev2`) licensed under CC BY-NC 4.0. Non-commercial use only.
 
 ---
 
@@ -214,4 +175,10 @@ Uses TRIBE v2 (`facebook/tribev2`) licensed under CC BY-NC 4.0. Portfolio and no
 }
 ```
 
+---
 
+## Related
+
+- [instagram-fake-detector](https://github.com/adheir01/instagram-fake-detector) — Project 01
+- Project 02 — Influencer ROI Scorer
+- Project 03 — Engagement Anomaly Dashboard
