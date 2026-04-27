@@ -45,15 +45,9 @@ The timeline view makes this visible. The derived metrics quantify it.
 
 ---
 
-## Honest framing
+## A note on interpretation
 
-ROI vertex masks use approximate spatial splits — not named atlas parcels. Relative comparisons between ads scored in the same run are valid. Absolute values are not meaningful across experiments.
-
-Safer language:
-- ✓ "signals correlated with memory encoding"
-- ✓ "predicted attentional activation"
-- ✗ "predicts purchase intent"
-- ✗ "measures brand recall"
+Scores represent predicted neural activation — not direct measurements. Use language like "signals correlated with" rather than "predicts" or "measures". Comparisons are meaningful within a run, not across separate experiments.
 
 ---
 
