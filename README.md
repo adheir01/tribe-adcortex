@@ -60,19 +60,16 @@ Example outputs from a single run:
 
 ## What it does
 
-- Processes 3–4 video ad creatives per run
-  - Signals
-  - Metrics
-  - Classfication  
-- Generates per-second signals across 8 brain-correlated signal groups
+- Processes 3–4 video ad creatives per run  
+- Generates per-second signals across 8 brain-correlated signal groups  
 - Derives interpretable metrics:
   - Hook strength (0–3s proxy for early engagement)
   - Mid retention (3–10s sustained attention)
   - Peak emotion timing
-  - Attention decay rate and pattern classification
-- Classifies engagement patterns: hook-and-drop / slow build / sustained
-- Surfaces potential issues: weak hook, late emotional peak, high motion with low memory signal
-- Stores results in PostgreSQL, transforms via dbt, visualises in Streamlit
+  - Attention decay rate  
+- Classifies engagement patterns: hook-and-drop / slow build / sustained  
+- Surfaces potential issues: weak hook, late emotional peak, high motion with low memory signal  
+- Stores results in PostgreSQL, transforms via dbt, and visualises in Streamlit  
 
 ---
 
