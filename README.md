@@ -198,6 +198,5 @@ Uses TRIBE v2 (`facebook/tribev2`) licensed under CC BY-NC 4.0. Non-commercial u
 
 ## Related
 
-- [instagram-fake-detector](https://github.com/adheir01/instagram-fake-detector) — Project 01
-- Project 02 — Influencer ROI Scorer
-- Project 03 — Engagement Anomaly Dashboard
+- [instagram-fake-detector](https://github.com/adheir01/instagram-fake-detector)
+- [influencer-roi-scorer](https://github.com/adheir01/influencer-roi-scorer)
