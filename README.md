@@ -2,7 +2,7 @@
 
 > Exploring how engagement in video ads evolves over time, instead of relying on a single average score.
 
-This project analyses video ad creatives using time-series signals and surfaces how attention, emotion, and memory-related signals change second by second.
+This project analyses video ad creatives using time-series signals to show how attention, emotion, and memory evolve second by second.
 
 **Built by Tobi** · Python · PostgreSQL · dbt · Streamlit · Docker
 
@@ -37,7 +37,9 @@ This kind of pattern is invisible in aggregate metrics but becomes clear in a ti
 
 ---
 
-## Results
+## Application Preview
+
+Example outputs from a single run:
 
 **Timeline — where each ad loses people**
 ![Timeline Chart](assets/timeline.png)
@@ -59,6 +61,9 @@ This kind of pattern is invisible in aggregate metrics but becomes clear in a ti
 ## What it does
 
 - Processes 3–4 video ad creatives per run
+  - Signals
+  - Metrics
+  - Classfication  
 - Generates per-second signals across 8 brain-correlated signal groups
 - Derives interpretable metrics:
   - Hook strength (0–3s proxy for early engagement)
@@ -66,7 +71,7 @@ This kind of pattern is invisible in aggregate metrics but becomes clear in a ti
   - Peak emotion timing
   - Attention decay rate and pattern classification
 - Classifies engagement patterns: hook-and-drop / slow build / sustained
-- Flags potential issues: weak hook, late emotional peak, high motion with low memory signal
+- Surfaces potential issues: weak hook, late emotional peak, high motion with low memory signal
 - Stores results in PostgreSQL, transforms via dbt, visualises in Streamlit
 
 ---
@@ -193,6 +198,10 @@ Uses TRIBE v2 (`facebook/tribev2`) licensed under CC BY-NC 4.0. Non-commercial u
   year={2026}
 }
 ```
+
+---
+
+This project is an exploration of how time-series signals can provide a more nuanced view of engagement than aggregate metrics.
 
 ---
 
