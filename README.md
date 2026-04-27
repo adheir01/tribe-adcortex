@@ -37,6 +37,25 @@ This kind of pattern is invisible in aggregate metrics but becomes clear in a ti
 
 ---
 
+## Process & Results
+
+**Timeline — where each ad loses people**
+![Timeline Chart](assets/timeline.png)
+
+**Derived metrics — hook strength, retention, pattern classification**
+![Derived Metrics](assets/derived_metrics.png)
+
+**Creative diagnosis — failure patterns and what to test next**
+![Creative Diagnosis](assets/creative_diagnosis.png)
+
+**Neural signature — per-ad signal profile**
+![Neural Signature](assets/neural_signature.png)
+
+**Home screen — workflow guide**
+![Home](assets/home.png)
+
+---
+
 ## What it does
 
 - Processes 3–4 video ad creatives per run
